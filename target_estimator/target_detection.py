@@ -1,11 +1,17 @@
 import cv2
 import numpy as np
+from collections import deque
+
+# Define the initial circle location and the window size for rolling average
+circle_loc = None
+window_size = 10
+prev_locs = deque(maxlen=window_size)
 
 # Define the RTMP stream URL
 rtmp_url = "rtmp://localhost:1935/live/test"
 
 # Initialize the video capture object
-cap = cv2.VideoCapture(0)
+cap = cv2.VideoCapture(rtmp_url)
 width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
 height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
 
@@ -35,13 +41,22 @@ while True:
 
     edges = cv2.Canny(red_pixels, threshold1=100,threshold2=200)
     circles = cv2.HoughCircles(mask, cv2.HOUGH_GRADIENT, 1, 50, param1=100, param2=20, minRadius=40, maxRadius=300)
-    # If the frame was successfully read
+    #If the frame was successfully read
     if circles is not None:
         circles = np.round(circles[0, :]).astype("int")
         for (x,y,r) in circles:
             cv2.circle(frame,(x,y),r,(0,0,255),5)
     
-
+    # if circles is not None:
+    #     circles = np.round(circles[0, :]).astype("int")
+    #     (x, y, r) = circles[0]
+    #     if circle_loc is not None:
+    #         prev_locs.append(np.array((x, y)))
+    #         if len(prev_locs) == window_size:
+    #             circle_loc = np.mean(prev_locs, axis=0).astype(int)
+    #     else:
+    #         circle_loc = np.array((x, y))
+    #     cv2.circle(frame, tuple(circle_loc), r, (0, 255, 0), 2)
     
     if ret:
         # Display the frame
