@@ -13,16 +13,25 @@ transformer = Transformer.from_crs("epsg:4326", "epsg:3857", always_xy=True)
 
 
 
-def process_image(image) :
+def create_blob_detector():
+    # Set up the blob detector parameters
+    params = cv2.SimpleBlobDetector_Params()
+    params.filterByColor = True
+    params.blobColor = 255  # Blobs must be white on a black background
+    # Create a blob detector with the parameters
+    return cv2.SimpleBlobDetector_create(params)
+
+def process_image(image, detector):
     """_summary_
-        Proccesses image to extract x and y pixel coordinates of the center circle
+        Processes image to extract x and y pixel coordinates of the center circle
     Args:
         image (_type_): image frame
+        detector : blob detector
 
     Returns:
         _type_: tuple containing x and y coordinates
     """
-    # Convert the image to HSV color space, easier to work wtih
+    # Convert the image to HSV color space, easier to work with
     hsv_image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
 
     # Define the color range for the red color in HSV
@@ -32,27 +41,34 @@ def process_image(image) :
     lower_red_2 = np.array([160,70,50])
     upper_red_2 = np.array([180,255,255])
 
+    lower_blue = np.array([90, 70, 50])
+    upper_blue = np.array([150, 255, 255])
 
     # Threshold the HSV image to get only red colors
     # Returns a mask with ones where its red and zeros where its not
     mask1 = cv2.inRange(hsv_image, lower_red, upper_red)
     mask2 = cv2.inRange(hsv_image, lower_red_2, upper_red_2)
+    
+    # element wise or
+    mask = np.bitwise_or(mask1, mask2)
+    
+    # mask for blue
+    mask_blue = cv2.inRange(hsv_image, lower_blue, upper_blue)
+    
+    # Detect blobs in the image
+    red_keypoints = detector.detect(mask)
+    blue_keypoints = detector.detect(mask_blue)
 
-    #element wise or
-    mask = np.bitwise_or(mask1,mask2)
-    return mask
-    # # Set up the blob detector parameters
-    # params = cv2.SimpleBlobDetector_Params()
-    # params.filterByColor = True
-    # params.blobColor = 20  # Blobs must be white on a black background
+    keypoints_red = np.array([[int(k.pt[0]), int(k.pt[1]), 'r'] for k in red_keypoints])
+    keypoints_blue = np.array([[int(k.pt[0]), int(k.pt[1]), 'b'] for k in blue_keypoints])
 
-    # # Create a blob detector with the parameters
-    # detector = cv2.SimpleBlobDetector_create(params)
-
-    # # Detect blobs in the image
-    # keypoints = detector.detect(mask)
-
-    # return keypoints
+    # In case no keypoints were found, create an empty array with the appropriate shape
+    if keypoints_red.size == 0:
+        keypoints_red = np.empty((0, 3))
+    if keypoints_blue.size == 0:
+        keypoints_blue = np.empty((0, 3))
+    
+    return np.concatenate((keypoints_red, keypoints_blue), axis=0)
 
 def estimate_gps(keypoint, plane_gps, plane_altitude, camera_pitch, camera_yaw):
     """Extracts the GPS coordinate of the center of a circle"""
@@ -88,29 +104,44 @@ def main():
     cap = cv2.VideoCapture(VIDEO_PATH)
     IMAGE_WIDTH = cap.get(cv2.CAP_PROP_FRAME_WIDTH)
     IMAGE_HEIGHT = cap.get(cv2.CAP_PROP_FRAME_HEIGHT)
+    detector = create_blob_detector()
+
+    # store trace of detection paths
+    historical_detection = []
     while cap.isOpened():
 
         ret, image = cap.read()
         # Get the image from the onboard camera
-        print()
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
         
-        cv2.imshow('Drone Footage:',image)
+        
 
         # # Get the plane's state
         # plane_gps = ...  # in format [longitude, latitude]
         # plane_altitude = ...  # in feet
 
         # # Process the image to find red circles
-        mask = process_image(image)
-        cv2.imshow('Mask',mask)
-        # # For each keypoint, estimate its GPS coordinates
-        # for keypoint in keypoints:
-        #     circle_gps = estimate_gps(keypoint, plane_gps, plane_altitude)
-        #     print(f"Found a circle at {circle_gps}")
+        keypoints = process_image(image,detector)
+        
+        # For each keypoint, estimate its GPS coordinates
+        for keypoint in keypoints:
 
-    cv2.release()
+            historical_detection.append(keypoint)
+
+        if historical_detection is not None:
+            for trace_point in historical_detection:
+                if(trace_point[2]=='r'):
+                    cv2.circle(image, (int(trace_point[0]), int(trace_point[1])), 5, (0, 0, 255), -1)
+                elif(trace_point[2]=='b'):
+                    cv2.circle(image, (int(trace_point[0]), int(trace_point[1])), 5, (255, 0, 0), -1)
+
+
+            # circle_gps = estimate_gps(keypoint, plane_gps, plane_altitude)
+            # print(f"Found a circle at {circle_gps}")
+        cv2.imshow('Drone Footage:',image)
+
+    cap.release()
     cv2.destroyAllWindows()
 
 
