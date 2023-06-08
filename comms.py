@@ -1,5 +1,0 @@
-
-
-#get mavlink info
-
-
