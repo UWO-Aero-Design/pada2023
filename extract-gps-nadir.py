@@ -8,6 +8,8 @@ CAMERA_HORIZONTAL_FOV = 83
 IMAGE_WIDTH = 0  # Width of the image captured by the camera (pixels)
 IMAGE_HEIGHT = 0  # Height of the image captured by the camera (pixels)
 VIDEO_PATH = 'data-set\90degree_2.MP4'
+#VIDEO_PATH = "data-set\\45degree_2.mp4"
+VIDEO_PATH = "data-set\\45degree_non_rectalinear_2.MP4"
 # Initialize a transformer from pyproj, this will be used to convert between longitude and latitude to x and y coordinates.
 transformer = Transformer.from_crs("epsg:4326", "epsg:3857", always_xy=True)
 
@@ -22,53 +24,37 @@ def create_blob_detector():
     return cv2.SimpleBlobDetector_create(params)
 
 def process_image(image, detector):
-    """_summary_
-        Processes image to extract x and y pixel coordinates of the center circle
-    Args:
-        image (_type_): image frame
-        detector : blob detector
-
-    Returns:
-        _type_: tuple containing x and y coordinates
-    """
     # Convert the image to HSV color space, easier to work with
     hsv_image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
 
     # Define the color range for the red color in HSV
-    lower_red = np.array([0, 70, 50])
-    upper_red = np.array([10, 255, 255])
-
-    lower_red_2 = np.array([160,70,50])
-    upper_red_2 = np.array([180,255,255])
-
+    lower_red1 = np.array([0, 70, 50])
+    upper_red1 = np.array([10, 255, 255])
+    lower_red2 = np.array([160,70,50])
+    upper_red2 = np.array([180,255,255])
     lower_blue = np.array([90, 70, 50])
     upper_blue = np.array([150, 255, 255])
 
-    # Threshold the HSV image to get only red colors
-    # Returns a mask with ones where its red and zeros where its not
-    mask1 = cv2.inRange(hsv_image, lower_red, upper_red)
-    mask2 = cv2.inRange(hsv_image, lower_red_2, upper_red_2)
-    
-    # element wise or
-    mask = np.bitwise_or(mask1, mask2)
-    
-    # mask for blue
+    # Create masks
+    mask_red1 = cv2.inRange(hsv_image, lower_red1, upper_red1)
+    mask_red2 = cv2.inRange(hsv_image, lower_red2, upper_red2)
     mask_blue = cv2.inRange(hsv_image, lower_blue, upper_blue)
     
+    # Combine masks
+    mask_combined = cv2.bitwise_or(cv2.bitwise_or(mask_red1, mask_red2), mask_blue)
+
     # Detect blobs in the image
-    red_keypoints = detector.detect(mask)
-    blue_keypoints = detector.detect(mask_blue)
+    keypoints = detector.detect(mask_combined)
 
-    keypoints_red = np.array([[int(k.pt[0]), int(k.pt[1]), 'r'] for k in red_keypoints])
-    keypoints_blue = np.array([[int(k.pt[0]), int(k.pt[1]), 'b'] for k in blue_keypoints])
-
-    # In case no keypoints were found, create an empty array with the appropriate shape
-    if keypoints_red.size == 0:
-        keypoints_red = np.empty((0, 3))
-    if keypoints_blue.size == 0:
-        keypoints_blue = np.empty((0, 3))
-    
-    return np.concatenate((keypoints_red, keypoints_blue), axis=0)
+    # Create array of keypoints with color information
+    keypoints_array = []
+    for k in keypoints:
+        x, y = int(k.pt[0]), int(k.pt[1])
+        if mask_red1[y, x] or mask_red2[y, x]:
+            keypoints_array.append([x, y, 'r'])
+        elif mask_blue[y, x]:
+            keypoints_array.append([x, y, 'b'])
+    return np.array(keypoints_array)
 
 def estimate_gps(keypoint, plane_gps, plane_altitude, camera_pitch, camera_yaw):
     """Extracts the GPS coordinate of the center of a circle"""
@@ -105,13 +91,16 @@ def main():
     IMAGE_WIDTH = cap.get(cv2.CAP_PROP_FRAME_WIDTH)
     IMAGE_HEIGHT = cap.get(cv2.CAP_PROP_FRAME_HEIGHT)
     detector = create_blob_detector()
-
+    MAX_HISTORICAL_SIZE = 500
     # store trace of detection paths
     historical_detection = []
     while cap.isOpened():
 
         ret, image = cap.read()
         # Get the image from the onboard camera
+
+        if ret == False:
+            break
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
         
@@ -129,12 +118,14 @@ def main():
 
             historical_detection.append(keypoint)
 
-        if historical_detection is not None:
+        if historical_detection:
             for trace_point in historical_detection:
-                if(trace_point[2]=='r'):
-                    cv2.circle(image, (int(trace_point[0]), int(trace_point[1])), 5, (0, 0, 255), -1)
-                elif(trace_point[2]=='b'):
-                    cv2.circle(image, (int(trace_point[0]), int(trace_point[1])), 5, (255, 0, 0), -1)
+                color = (0, 0, 255) if trace_point[2] == 'r' else (255, 0, 0)
+                cv2.circle(image, (int(trace_point[0]), int(trace_point[1])), 5, color, -1)
+
+            # Limit the size of historical_detection
+            if len(historical_detection) > MAX_HISTORICAL_SIZE:
+                historical_detection = historical_detection[-MAX_HISTORICAL_SIZE:]
 
 
             # circle_gps = estimate_gps(keypoint, plane_gps, plane_altitude)
