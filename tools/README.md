@@ -22,3 +22,12 @@ SYS_STATUS {onboard_control_sensors_present : 325188671, onboard_control_sensors
 POWER_STATUS {Vcc : 4497, Vservo : 4465, flags : 0}
 MEMINFO {brkval : 0, freemem : 65535, freemem32 : 66096}
 ```
+
+## Get Mavlink Source Code
+*File: get_mavlink_src.py*
+
+The Mavlink source code is auto-generated so it can be hard to see all the functions that can be called on a `mav` device (eg. `mavutil.mavlink_connection().mav.heartbeat_send()`). This script will load the Mavlink source python file and save its contents to the specified directory. 
+
+Usage: `python3 get_mavlink_src.py <output file>`
+
+Example: `python3 message_list.py mavlink.py`
