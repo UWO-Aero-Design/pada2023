@@ -6,6 +6,8 @@ A collection of tools that are useful for interfacing with the PADA / mavlink de
 
 Listen to the Mavlink messages from a device and save all unique message types to a file. Run this script for 30-45 seconds to allow it to read messages from the Mavlink device and then press ctrl+c to save the file and exit.
 
+Requirements: `python3 -m pip install pymavlink`
+
 Usage: `python3 message_list.py <mavlink connection> <output file>`
 
 Example: `python3 message_list.py /dev/ttyUSB0 msg_types.txt`
@@ -27,6 +29,8 @@ MEMINFO {brkval : 0, freemem : 65535, freemem32 : 66096}
 *File: get_mavlink_src.py*
 
 The Mavlink source code is auto-generated so it can be hard to see all the functions that can be called on a `mav` device (eg. `mavutil.mavlink_connection().mav.heartbeat_send()`). This script will load the Mavlink source python file and save its contents to the specified directory. 
+
+Requirements: `python3 -m pip install pymavlink`
 
 Usage: `python3 get_mavlink_src.py <output file>`
 

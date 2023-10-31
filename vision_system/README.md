@@ -9,6 +9,8 @@ The start and end GPS coordinates are currently hardcoded in the script but this
 
 Note: an RTMP server must already be running. If Docker is installed, an RTMP server can easily be started with `docker run --rm -p 1935:1935 --name nginx-rtmp tiangolo/nginx-rtmp`
 
+Requirements: `python3 -m pip install opencv-python pymavlink`
+
 Usage: `python3 sim_client.py <mavlink connection> <rtmp stream> <input file>`
 
 Example: `python3 sim_client.py udpout:127.0.0.1:5001 rtmp://localhost:1935/live/test ~/45degree_1.mp4`
@@ -17,6 +19,8 @@ Example: `python3 sim_client.py udpout:127.0.0.1:5001 rtmp://localhost:1935/live
 *File: vision_system.py*
 
 This is the main program for running the PADA vision system using an RTMP stream for video and Mavlink telemetry stream. It is an early work-in-progress with many issues that still need to be addressed. The main goal is to extract GPS coordinates of target landing zones using the video and telemetry streams. The PADA/PA will then use these coordinates to attempt a landing at one of the zones. 
+
+Requirements: `python3 -m pip install opencv-python pymavlink geographiclib scipy numpy`
 
 Usage: `python3 vision_system.py <mavlink connection> <rtmp stream>`
 
