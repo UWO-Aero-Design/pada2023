@@ -40,7 +40,7 @@ def main():
 
     try:
         tlm = Telemetry(args.MAV)
-        video = Video(args.STREAM)
+        video = Video(args.STREAM)# AA: createing a video from video class
     except Exception as err:
         print(err)
         exit(0)
@@ -103,7 +103,7 @@ def main():
                     cv2.rectangle(frame, start, end, (36,255,12), 4)
                     desc_str = f"X: {c['x']}, Y: {c['y']} Az: {round(degrees(azimuth),2)} El: {round(degrees(elevation),2)} D: {round(distance,2)}, Lat: {round(lat, 7)}, Lon: {round(lon, 7)}"
                     cv2.putText(frame, desc_str, (c['x']-300, c['y']-30), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (0, 0, 255), 2, cv2.LINE_AA)
-
+# AA: putiing text on the video with 30 pixel spaceing 
             if att:    
                 cv2.putText(frame, f"{att.time_boot_ms}", (50, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv2.LINE_AA) 
                 cv2.putText(frame, f"Lat  : {att.lat/1E7}", (50, 60), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv2.LINE_AA) 

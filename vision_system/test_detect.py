@@ -6,6 +6,7 @@ from geographiclib.geodesic import Geodesic
 
 from TargetDetect import TargetDetect
 
+# AA:#returns 0 over a low absoulte value
 def clamp_zero(x):
     if x > -0.001 and x < 0.001:
         return 0
@@ -13,6 +14,7 @@ def clamp_zero(x):
 
 if __name__ == "__main__":
     FOCAL_LENGTH_MM = 24
+  # AA:xyz, alfa beta gamma
     att = { "altitude": 1,  "lat": 52, "lon": 21, 'yaw': 0, 'pitch': 0, 'roll': 0 }
     
     detect = TargetDetect()
@@ -93,6 +95,6 @@ if __name__ == "__main__":
 
     WINDOW_NAME = 'Detection'
     cv2.namedWindow(WINDOW_NAME, cv2.WINDOW_NORMAL)
-    cv2.imshow(WINDOW_NAME, frame)
+    cv2.imshow(WINDOW_NAME, frame)# AA:shows window
     key = cv2.waitKey(0)
     cv2.destroyAllWindows() 
