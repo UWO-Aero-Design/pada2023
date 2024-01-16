@@ -35,3 +35,15 @@ Requirements: `python3 -m pip install pymavlink`
 Usage: `python3 get_mavlink_src.py <output file>`
 
 Example: `python3 message_list.py mavlink.py`
+
+
+## Convert DJI Video Telemetry Metadata to Mavlink
+*File: dji_exif_to_mavlink.py*
+
+TODO: description
+
+Requirements: `python3 -m pip install pyexiftool parse pymavlink`
+
+Usage: `python3 dji_exif_to_mavlink.py <input video> <output filename>`
+
+Example: `python3 dji_exif_to_mavlink.py ./video.mp4 ./video_mavlink.txt`
