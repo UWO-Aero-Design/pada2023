@@ -13,11 +13,14 @@ def clamp_zero(x):
 
 if __name__ == "__main__":
     FOCAL_LENGTH_MM = 24
-    att = { "altitude": 1,  "lat": 52, "lon": 21, 'yaw': 0, 'pitch': 0, 'roll': 0 }
+    TEXT_SCALE = 1.5
+    TEXT_COLOUR = (255,255,255)
+    TEXT_THICKNESS = 3
+    att = { "altitude": 15.6,  "lat": 42.9792118, "lon": -81.1439136, 'yaw': 10.334, 'pitch': 1*0, 'roll': -4.4*0 }
     
     detect = TargetDetect()
 
-    frame = cv2.imread('image.jpg')
+    frame = cv2.imread('../data/DJI_0154.jpg')
     detect.detect(frame)
     height, width = frame.shape[:2]
     cp = (int(width/2), int(height/2))
@@ -33,20 +36,19 @@ if __name__ == "__main__":
 
     # camera: x=width, y=height, z=into the page
     # drone: x=out of nose, y=right wing, z=out of belly
-    # need to tilt up (x) camera 45 degrees and then rotate 90 deg (Z)
     # [1,0,0] -> [0,1,0]
     # [0,1,0] -> [0,-0.7,0.7]
     # [0,0,1] -> [0.7,0,0.7]
-    CAMERA_PITCH_DEG = -45 # negative is pitch down
-    camera_to_drone = R.from_euler('xyz', [-1*CAMERA_PITCH_DEG, 0, 90], degrees=True)
+    CAMERA_PITCH_DEG = 0
+    camera_to_drone = R.from_euler('xyz', [0, 0, 90], degrees=True)
     drone_to_world = R.from_euler('xyz', [att['yaw'], att['pitch'], att['roll']], degrees=True)
 
-    cv2.putText(frame, f"Lat  : {att['lat']}", (50, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv2.LINE_AA) 
-    cv2.putText(frame, f"Lon  : {att['lon']}", (50, 60), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv2.LINE_AA)
-    cv2.putText(frame, f"Alt  : {att['altitude']}", (50, 90), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv2.LINE_AA) 
-    cv2.putText(frame, f"Yaw  : {att['yaw']}", (50, 120), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv2.LINE_AA)
-    cv2.putText(frame, f"Pitch: {att['yaw']}", (50, 150), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv2.LINE_AA)
-    cv2.putText(frame, f"Roll : {att['roll']}", (50, 180), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv2.LINE_AA)
+    cv2.putText(frame, f"Lat  : {att['lat']}", (50, 40), cv2.FONT_HERSHEY_SIMPLEX, TEXT_SCALE, TEXT_COLOUR, TEXT_THICKNESS, cv2.LINE_AA) 
+    cv2.putText(frame, f"Lon  : {att['lon']}", (50, 80), cv2.FONT_HERSHEY_SIMPLEX, TEXT_SCALE, TEXT_COLOUR, TEXT_THICKNESS, cv2.LINE_AA)
+    cv2.putText(frame, f"Alt  : {att['altitude']}", (50, 120), cv2.FONT_HERSHEY_SIMPLEX, TEXT_SCALE, TEXT_COLOUR, TEXT_THICKNESS, cv2.LINE_AA) 
+    cv2.putText(frame, f"Yaw  : {att['yaw']}", (50, 160), cv2.FONT_HERSHEY_SIMPLEX, TEXT_SCALE, TEXT_COLOUR, TEXT_THICKNESS, cv2.LINE_AA)
+    cv2.putText(frame, f"Pitch: {att['yaw']}", (50, 200), cv2.FONT_HERSHEY_SIMPLEX, TEXT_SCALE, TEXT_COLOUR, TEXT_THICKNESS, cv2.LINE_AA)
+    cv2.putText(frame, f"Roll : {att['roll']}", (50, 240), cv2.FONT_HERSHEY_SIMPLEX, TEXT_SCALE, TEXT_COLOUR, TEXT_THICKNESS, cv2.LINE_AA)
 
     for c in centroids:
         # clamp -0.0 (idk why atan2 treats it differently)
@@ -54,7 +56,6 @@ if __name__ == "__main__":
         Yc = clamp_zero((c['y']-cp[1])/(FOCAL_LENGTH_MM))
         Zc = 1
         Pc = [Xc, Yc, Zc]
-        print(Pc)
 
         Pd = camera_to_drone.apply(Pc)
         Pd = [clamp_zero(x) for x in Pd]
@@ -72,7 +73,7 @@ if __name__ == "__main__":
         Z = distance * cos(effective_elevation)
 
         g = geod.Direct(att['lon'], att['lat'], 0, X)
-        g = geod.Direct(g['lon2'], g['lat2'], 90, Y)
+        g = geod.Direct(g['lon2'], g['lat2'], 90, -Y)
         lon = g['lon2']
         lat = g['lat2']
 
@@ -89,7 +90,7 @@ if __name__ == "__main__":
         end   = ( int(c['x']+c['w']/2), int(c['y']+c['h']/2) )
         cv2.rectangle(frame, start, end, (36,255,12), 4)
         desc_str = f"X: {c['x']}, Y: {c['y']} Az: {round(degrees(azimuth),2)} El: {round(degrees(elevation),2)} D: {round(distance,2)}, Lat: {round(lat, 7)}, Lon: {round(lon, 7)}"
-        cv2.putText(frame, desc_str, (c['x']-300, c['y']-30), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (0, 0, 255), 2, cv2.LINE_AA)
+        cv2.putText(frame, desc_str, (c['x']-700, c['y']-100), cv2.FONT_HERSHEY_SIMPLEX, TEXT_SCALE, TEXT_COLOUR, TEXT_THICKNESS, cv2.LINE_AA)
 
     WINDOW_NAME = 'Detection'
     cv2.namedWindow(WINDOW_NAME, cv2.WINDOW_NORMAL)
