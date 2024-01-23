@@ -2,7 +2,6 @@
 
 import queue
 import argparse
-from math import sin, cos, tan, pi, sqrt, atan2, radians, degrees
 
 import cv2
 import numpy as np
@@ -22,89 +21,62 @@ def parse_args():
 
     return args
 
-def clamp_zero(x):
-    if x > -0.001 and x < 0.001:
-        return 0
-    return x
+def placeBoundingBox(frame, x, y, w, h, colour=(255,255,255), thickness=4):
+        start = ( int(x-w/2), int(y-h/2) )
+        end   = ( int(x+w/2), int(y+h/2) )
+        cv2.rectangle(frame, start, end, colour, thickness)
 
 def main():
 
     args = parse_args()
+    GLOBAL_POSITION_INT = 'GLOBAL_POSITION_INT'
+    ATTITUDE = 'ATTITUDE'
 
     WINDOW_NAME = 'Tracking'
-    FOCAL_LENGTH_MM = 24
-    CAMERA_PITCH_DEG = -45 # negative is pitch down
-    TARGET_THRESH_M = 4
-
     att = None
+    messages = [GLOBAL_POSITION_INT, ATTITUDE]
 
     try:
-        tlm = Telemetry(args.MAV)
-        video = Video(args.STREAM)
+        tlm = Telemetry(args.MAV, messages, conn_print=True, debug_print=True)
+        video = Video(args.STREAM, debug_print=True)
+        detect = TargetDetect()
     except Exception as err:
         print(err)
         exit(0)
 
-    detect = TargetDetect()
-    cp = video.get_centre_point()
-    camera_to_drone = R.from_euler('xyz', [-1*CAMERA_PITCH_DEG, 0, 90], degrees=True)
-
-    geod = Geodesic.WGS84
-    g = geod.Direct(0, 0, 0, TARGET_THRESH_M)
-    thresh = g['lat2']
-    zones = []
+    # width and height of image stream
+    res = video.get_resolution()
 
     while True:
-        try:
-            att = tlm.telemetry.get(block=False)
-        except queue.Empty:
-            pass
+        msgs = tlm.get_msgs()
+        print(msgs)
+        pos = msgs[GLOBAL_POSITION_INT]
+        att = msgs[ATTITUDE]
 
         try:
-            frame = video.frames.get(block=False)
+            frame = video.get_frame()
 
             centroids, _ = detect.detect(frame)
 
             if att:
-                drone_to_world = R.from_euler('xyz', [att.hdg*0, 0, 0], degrees=True)
+
+                vec_alt = att.alt
+                vec_lat = att.lat/1E7
+                vec_lon = att.lon/1E7
+                vec_hdg = 0
+                vec_pitch = 0
+                vec_roll = 0
                 for c in centroids:
-                    # clamp -0.0 (idk why atan2 treats it differently)
-                    Xc = clamp_zero((c['x']-cp[0])/(FOCAL_LENGTH_MM))
-                    Yc = clamp_zero((c['y']-cp[1])/(FOCAL_LENGTH_MM))
-                    Zc = 1
-                    Pc = [Xc, Yc, Zc]
+                    target_coords = detect.pixels2coords(c['x'], c['y'], res[0], res[1], att.alt*1000, att.lat/1E7, att.lon/1E7, vec_hdg, vec_pitch, vec_roll)
+                    lat = target_coords['lat']
+                    lon = target_coords['lon']
 
-                    Pd = camera_to_drone.apply(Pc)
-                    Pd = [clamp_zero(x) for x in Pd]
-                    
-                    Pw = drone_to_world.apply(Pd)
-                    Pw = [clamp_zero(x) for x in Pw]
-
-                    azimuth = atan2(Pw[1], Pw[0])
-                    elevation = atan2(-Pw[2], sqrt(Pw[0]**2 + Pw[1]**2))
-                    effective_elevation = elevation-radians(CAMERA_PITCH_DEG)
-                    distance = att.alt/cos(effective_elevation)
-
-                    shift = geod.Direct(0, 0, degrees(azimuth), distance)
-                    lon = att.lon/1E7 + shift['lon2']
-                    lat = att.lat/1E7 + shift['lat2']
-
-                    new = True
-                    for zone in zones:
-                        if(abs(zone['lat']-lat) < thresh and abs(zone['lon']-lon) < thresh):
-                            zone["count"] = zone["count"]+1
-                            new = False
-                    if new:
-                        zones.append({ 'lat': lat, 'lon': lon, 'count': 1 })
-                        print(f"New target at {lat},{lon}")
-
-                    start = ( int(c['x']-c['w']/2), int(c['y']-c['h']/2) )
-                    end   = ( int(c['x']+c['w']/2), int(c['y']+c['h']/2) )
-                    cv2.rectangle(frame, start, end, (36,255,12), 4)
+                    placeBoundingBox(frame, c['x'], c['y'], c['w'], c['h'])
                     desc_str = f"X: {c['x']}, Y: {c['y']} Az: {round(degrees(azimuth),2)} El: {round(degrees(elevation),2)} D: {round(distance,2)}, Lat: {round(lat, 7)}, Lon: {round(lon, 7)}"
                     cv2.putText(frame, desc_str, (c['x']-300, c['y']-30), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (0, 0, 255), 2, cv2.LINE_AA)
 
             if att:    
+                # TODO: wrap this up in a function in the Video class
                 cv2.putText(frame, f"{att.time_boot_ms}", (50, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv2.LINE_AA) 
                 cv2.putText(frame, f"Lat  : {att.lat/1E7}", (50, 60), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv2.LINE_AA) 
                 cv2.putText(frame, f"Lon  : {att.lon/1E7}", (50, 90), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv2.LINE_AA) 
