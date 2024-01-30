@@ -49,49 +49,30 @@ def main():
 
     while True:
         msgs = tlm.get_msgs()
-        print(msgs)
         pos = msgs[GLOBAL_POSITION_INT]
         att = msgs[ATTITUDE]
 
-        try:
-            frame = video.get_frame()
+        frame = video.get_frame()
 
-            centroids, _ = detect.detect(frame)
+        if(frame is None):
+            print("Video stream complete")
+            break
 
-            if att:
+        centroids, _ = detect.detect(frame)
 
-                vec_alt = att.alt
-                vec_lat = att.lat/1E7
-                vec_lon = att.lon/1E7
-                vec_hdg = 0
-                vec_pitch = 0
-                vec_roll = 0
-                for c in centroids:
-                    target_coords = detect.pixels2coords(c['x'], c['y'], res[0], res[1], att.alt*1000, att.lat/1E7, att.lon/1E7, vec_hdg, vec_pitch, vec_roll)
-                    lat = target_coords['lat']
-                    lon = target_coords['lon']
+        if pos and att:    
+            # TODO: wrap this up in a function in the Video class
+            cv2.putText(frame, f"{pos.time_boot_ms}", (50, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv2.LINE_AA) 
+            cv2.putText(frame, f"Lat  : {pos.lat/1E7}", (50, 60), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv2.LINE_AA) 
+            cv2.putText(frame, f"Lon  : {pos.lon/1E7}", (50, 90), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv2.LINE_AA) 
+            cv2.putText(frame, f"Hdg  : {pos.hdg}", (50, 120), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv2.LINE_AA)
 
-                    placeBoundingBox(frame, c['x'], c['y'], c['w'], c['h'])
-                    desc_str = f"X: {c['x']}, Y: {c['y']} Az: {round(degrees(azimuth),2)} El: {round(degrees(elevation),2)} D: {round(distance,2)}, Lat: {round(lat, 7)}, Lon: {round(lon, 7)}"
-                    cv2.putText(frame, desc_str, (c['x']-300, c['y']-30), cv2.FONT_HERSHEY_SIMPLEX, 0.75, (0, 0, 255), 2, cv2.LINE_AA)
+        cv2.namedWindow(WINDOW_NAME, cv2.WINDOW_NORMAL)
+        cv2.imshow(WINDOW_NAME, frame)
 
-            if att:    
-                # TODO: wrap this up in a function in the Video class
-                cv2.putText(frame, f"{att.time_boot_ms}", (50, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv2.LINE_AA) 
-                cv2.putText(frame, f"Lat  : {att.lat/1E7}", (50, 60), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv2.LINE_AA) 
-                cv2.putText(frame, f"Lon  : {att.lon/1E7}", (50, 90), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv2.LINE_AA) 
-                cv2.putText(frame, f"Hdg  : {att.hdg}", (50, 120), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv2.LINE_AA)
-                cv2.putText(frame, f"Tlm  : {tlm.telemetry.qsize()}", (50, 150), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv2.LINE_AA) 
-                cv2.putText(frame, f"Frame: {video.frames.qsize()}", (50, 180), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv2.LINE_AA) 
-
-            cv2.namedWindow(WINDOW_NAME, cv2.WINDOW_NORMAL)
-            cv2.imshow(WINDOW_NAME, frame)
-
-            key = cv2.waitKey(1)
-            if key == ord('q') or key == 27 or cv2.getWindowProperty(WINDOW_NAME, cv2.WND_PROP_VISIBLE) < 1: # q, esc, or window closed
-                break
-        except queue.Empty:
-            pass
+        key = cv2.waitKey(1)
+        if key == ord('q') or key == 27 or cv2.getWindowProperty(WINDOW_NAME, cv2.WND_PROP_VISIBLE) < 1: # q, esc, or window closed
+            break
 
     print('Closing video')
     cv2.destroyAllWindows()
