@@ -14,7 +14,7 @@ client.wait_heartbeat()
 print("Heartbeat from PADA!")
 
 gps_data = []
-altitude_data = []
+attitude_data = []
 
 def get_offset_time():
     return time.time() - start_time
@@ -23,8 +23,8 @@ def save_telemetry_data(path):
     os.makedirs(path, exist_ok=True) 
     with open(os.path.join(path, 'gps_data.json'), 'w') as f:
         json.dump(gps_data, f)
-    with open(os.path.join(path, 'altitude_data.json'), 'w') as f:
-        json.dump(altitude_data, f)
+    with open(os.path.join(path, 'atitude_data.json'), 'w') as f:
+        json.dump(attitude_data, f)
 
 def receive_telemetry(client: mavutil.mavfile, stop_flag: threading.Event):
     while not stop_flag.is_set():
@@ -33,7 +33,7 @@ def receive_telemetry(client: mavutil.mavfile, stop_flag: threading.Event):
         if message:
             if message.get_type() == 'ATTITUDE':
                 data = {'data': message.to_dict(), 'timestamp': get_offset_time()}
-                altitude_data.append(data)
+                attitude_data.append(data)
 
             elif message.get_type() == 'GLOBAL_POSITION_INT':
                 data = {'data': message.to_dict(), 'timestamp': get_offset_time()}
