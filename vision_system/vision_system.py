@@ -58,7 +58,7 @@ def main():
             print("Video stream complete")
             break
 
-        centroids, _ = detect.detect(frame)
+        centroids = detect.detect(frame)
 
         if pos and att:    
             # TODO: wrap this up in a function in the Video class

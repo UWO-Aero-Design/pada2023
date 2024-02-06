@@ -1,0 +1,113 @@
+[33mcommit 25ee780dfe6409ce0f78834ebb850a47afac338a[m[33m ([m[1;36mHEAD -> [m[1;32mfeature/vision-sys-initial-integration[m[33m)[m
+Author: Khathab <khathab.hamed@gmail.com>
+Date:   Tue Jan 23 15:23:25 2024 -0500
+
+    recorder telem/video
+
+[33mcommit f4e9c3d628b997043c6ba658917fd1117d1e198c[m[33m ([m[1;31morigin/feature/vision-sys-initial-integration[m[33m, [m[1;32mcomms[m[33m)[m
+Author: Jeff St. Jean <jeffrey@stjean.ca>
+Date:   Tue Oct 31 10:31:05 2023 -0400
+
+    Add requirements
+
+[33mcommit 99b66089ef1b1892e8ded7d98f2cd7f4e7f6fdbc[m
+Author: Jeff St. Jean <jeffrey@stjean.ca>
+Date:   Tue Oct 31 10:20:18 2023 -0400
+
+    add vision system
+
+[33mcommit c13d47b0a4dbab2a104899a9fc430a9f808de9bd[m
+Author: Jeff St. Jean <jeffrey@stjean.ca>
+Date:   Tue Oct 31 10:16:05 2023 -0400
+
+    add mavlink replay/simulator program
+
+[33mcommit af1f93599f570c19da7a5b41b70686d92eaefd35[m
+Author: Jeff St. Jean <jeffrey@stjean.ca>
+Date:   Tue Oct 31 10:08:15 2023 -0400
+
+    add __pycache__ to .gitignore
+
+[33mcommit c9c1f47a1d60584659b11255b1c9c89c948ddca1[m
+Author: Jeff St. Jean <jeffrey@stjean.ca>
+Date:   Tue Oct 31 10:07:59 2023 -0400
+
+    add mavlink source code tool
+
+[33mcommit e90f21ced9cb09baa2169769d9623cd8712d981b[m
+Author: Jeff St. Jean <jeffrey@stjean.ca>
+Date:   Tue Oct 31 10:07:29 2023 -0400
+
+    add mavlink message list tool
+
+[33mcommit 89897b02b9882d92e630cdda36a481c58665be4a[m
+Author: Khathab <khathab.hamed@gmail.com>
+Date:   Sat Oct 14 11:54:33 2023 -0400
+
+    exploratory
+
+[33mcommit d4e60c8795a000c1957c24189a7ebe7dead25392[m
+Author: Khathab <khathab.hamed@gmail.com>
+Date:   Sat Oct 14 11:51:39 2023 -0400
+
+    exploratory mavlink communication
+
+[33mcommit 6983fce75a9d647d6179a64d7743705c24ffb55c[m
+Author: Khathab <khathab.hamed@gmail.com>
+Date:   Sat Sep 30 14:47:21 2023 -0400
+
+    added mavlink demo
+
+[33mcommit 08bdc112afe6d47939e669e8b55b337ee9c84d12[m
+Author: micahjohan <119823720+micahjohan@users.noreply.github.com>
+Date:   Sat Sep 30 14:45:48 2023 -0400
+
+    added mavlink demo
+
+[33mcommit e6f411f6161817aedc7e3f6e5924763d207f7450[m
+Author: zixtrauce <sshar564@uwo.ca>
+Date:   Sun Jun 25 13:21:37 2023 -0700
+
+    Add target-to-gps code as requested by @khatab
+    
+    Adds code from Shiven's target-to-gps repo as requested by @khatab
+    Code has not yet been tested on live data, and accuracy is unknown.
+
+[33mcommit b3daba7020a3ce23a7b1eb7a55d3eeb8f4b942ad[m
+Merge: 4da3780 58e8fd3
+Author: khathab <46201275+khathab@users.noreply.github.com>
+Date:   Sun Apr 30 21:09:21 2023 -0400
+
+    Merge pull request #1 from UWO-Aero-Design/target_estimator
+    
+    Target estimator
+
+[33mcommit 58e8fd3ff3898acf8bcb8cc01166f5b09fc122c0[m[33m ([m[1;31morigin/target_estimator[m[33m)[m
+Author: Khathab Hamed <khathab.hamed@gmail.com>
+Date:   Sun Apr 30 21:08:34 2023 -0400
+
+    a bunch of shit
+
+[33mcommit cc65bd421959b4ece778d8f22211461105f5ea9c[m
+Author: Khathab Hamed <khathab.hamed@gmail.com>
+Date:   Mon Apr 10 03:21:41 2023 -0400
+
+    working circle detection
+
+[33mcommit 0f7f42f988cbae6fcbf7f972d4944cf126490cba[m
+Author: Khathab Hamed <khathab.hamed@gmail.com>
+Date:   Mon Apr 10 01:41:48 2023 -0400
+
+    dji streaming through nginx server
+
+[33mcommit 4da3780e7a7884d36382ffa5bea5eca90315dcf5[m[33m ([m[1;31morigin/MAVlink[m[33m)[m
+Author: James <usymmij@gmail.com>
+Date:   Thu Feb 2 19:35:43 2023 -0500
+
+    uploaded scripts stuff
+
+[33mcommit 5dca102dd734b24c433dd9ab1790c4c0ffb439a6[m
+Author: khathab <46201275+khathab@users.noreply.github.com>
+Date:   Thu Feb 2 17:45:18 2023 -0500
+
+    Initial commit
