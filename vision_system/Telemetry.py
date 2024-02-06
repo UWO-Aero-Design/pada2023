@@ -31,12 +31,9 @@ class Telemetry:
         self.thread.daemon = True; # makes sure it cleans up on ctrl+c
         self.thread.start()
     
-    def now():
-        datetime.utcnow().timestamp()*1e3
-    
     def handle_messges(self):
         while True:
-            msg = self.dev.recv_match(blocking=True, timeout=5)
+            msg = self.dev.recv_match(blocking=True, timeout=1)
 
             # verify message was received
             if msg is None:
@@ -48,10 +45,7 @@ class Telemetry:
                 continue
 
             # save the message 
-            now = Telemetry.now()
-            self.telemetry[msg_type] = (now, msg)
-            if self.debug_print:
-                print(f"[{now}], {msg}")
+            self.telemetry[msg_type] = msg
 
     def get_msg(self, msg_type):
         if msg_type not in self.telemetry:

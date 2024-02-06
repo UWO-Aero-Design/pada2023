@@ -144,7 +144,7 @@ class TargetDetect:
 
         # calculate transform from drone to world using yaw, pitch, roll
         # TODO: incorporate pitch and roll
-        drone_to_world = R.from_euler('xyz', [vec_hdg, 0, 0], degrees=True)
+        drone_to_world = R.from_euler('xyz', [vec_hdg, vec_pitch, vec_roll], degrees=True)
 
         # point in camera reference frame
         point_camera = self.pixels2camera(x, y, camera_origin)
