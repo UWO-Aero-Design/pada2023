@@ -142,10 +142,11 @@ def main():
 
     tlm_thread = Thread(target=send_tlm, args=[stop_flag, client, gps, attitude])
     tlm_thread.daemon = True; # makes sure it cleans up on ctrl+c
-    tlm_thread.start()
 
     video_thread = Thread(target=send_video, args=[stop_flag, args.VIDEO, args.STREAM])
     video_thread.daemon = True; # makes sure it cleans up on ctrl+c
+    
+    tlm_thread.start()
     video_thread.start()
 
 
