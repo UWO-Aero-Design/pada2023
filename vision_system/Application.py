@@ -1,13 +1,26 @@
 import tkinter as tk
 from threading import Event
 from queue import Queue
-from Message import TelemetryMessage, ParamsMessage
-import tkintermapview
+from Message import TelemetryMessage, ParamsMessage, PointMessage
+from tkintermapview import TkinterMapView
+import cv2
+import pathlib
+from PIL import Image, ImageTk
+import geocoder
 
 class Application:
+    ICON_LOCATION = str((pathlib.Path(__file__) / '../logo.png').resolve())
     def __init__(self):
         self.root = tk.Tk()
         self.root.protocol("WM_DELETE_WINDOW", self.on_close)
+        self.root.img = tk.PhotoImage(file=self.ICON_LOCATION)
+        self.root.iconphoto( False, self.root.img )
+
+        self.screen_width = self.root.winfo_screenwidth()
+        self.screen_height = self.root.winfo_screenheight()
+
+        # replace either screen_width and screen_height to change the appropriate dimension
+        self.root.geometry(f"{self.screen_width}x{self.screen_height}")
 
         # Thread communication
         self.command_queue = Queue()
@@ -16,78 +29,130 @@ class Application:
         self.inbound_message_queue = Queue()
         self.shutdown_event = Event()
 
+        g = geocoder.ip('me')
+        pos = g.latlng
+        self.centre_pos = (float(pos[0]), float(pos[1]))
+
+        self.DOT_SIZE = 6
+        self.cirlce_image = self.create_circle_image(self.DOT_SIZE)
+
+        self.markers = []
+
         self.setup_ui()
+
+    def add_point(self, point: PointMessage):
+        self.markers.append(self.map_widget.set_marker(point.lat, point.lon, icon=self.cirlce_image))
+
+    def remove_points(self):
+        for marker in self.markers:
+            marker.delete()
+        self.markers = []
 
     def setup_ui(self):
         self.root.title("Western Aero Design PADA")
 
-        # Divide the window into two sections: Left for Webcam and Map, Right for Yaw-Pitch-Roll and Controls
-        self.left_frame = tk.Frame(self.root)
-        self.left_frame.pack(side=tk.LEFT, expand=True, fill=tk.BOTH)
+        self.root.grid_rowconfigure(0, weight=1)
+        self.root.grid_rowconfigure(1, weight=1)
+        self.root.grid_columnconfigure(0, weight=1)
+        self.root.grid_columnconfigure(1, weight=1)
 
-        self.right_frame = tk.Frame(self.root)
-        self.right_frame.pack(side=tk.RIGHT, expand=True, fill=tk.BOTH)
+        self.camera_frame = tk.Frame(self.root, bd=2, relief="groove")
+        self.camera_frame.grid(row=0, column=0, sticky="nsew", ipadx=0, ipady=0, padx=0, pady=0)
+        self.root.after(150, self.setup_camera_view, self.camera_frame)
 
-        self.setup_camera_view(self.left_frame)
-        self.setup_map_view(self.left_frame)
-        self.setup_control_view(self.right_frame)
-        self.setup_telemetry_view(self.right_frame)
+        self.map_frame = tk.Frame(self.root, bd=2, relief="groove")
+        self.map_frame.grid(row=1, column=0, sticky="nsew")
+        self.setup_map_view(self.map_frame)
+
+        self.telemetry_frame = tk.Frame(self.root, bd=2, relief="groove")
+        self.telemetry_frame.grid(row=0, column=1, sticky="nsew")
+        self.setup_telemetry_view(self.telemetry_frame)
+
+        self.control_frame = tk.Frame(self.root, bd=2, relief="groove")
+        self.control_frame.grid(row=1, column=1, sticky="nsew")
+        self.setup_control_view(self.control_frame)
 
         # Start updating the GUI with data from the algorithm
         self.update_gui()
 
     def setup_camera_view(self, parent):
-        # Webcam view (Top Left)
-        self.webcam_frame = tk.LabelFrame(parent, text="Webcam View")
-        self.webcam_frame.pack(expand=True, fill=tk.BOTH)
+        path = (pathlib.Path() / 'data/sample_image.jpg').resolve()
+        cv2_img = cv2.imread(str(path))
 
-        # Placeholder for Webcam view
-        tk.Label(self.webcam_frame, text="Webcam feed goes here").pack(expand=True)
+        # Calculate the desired size based on the parent's width and the image's aspect ratio
+        parent.update_idletasks()  # Make sure parent's width is up to date
+        desired_width = int(parent.winfo_width() / 2)
+        (original_height, original_width) = cv2_img.shape[:2]
+        aspect_ratio = original_height / original_width
+        desired_height = int(desired_width * aspect_ratio)
+
+        # Resize image to fit the width of the cell and maintain aspect ratio
+        cv2_img_resized = cv2.resize(cv2_img, (desired_width, desired_height))
+
+        # rearrange color channels
+        cv2_img_resized = cv2.cvtColor(cv2_img_resized, cv2.COLOR_BGR2RGB)
+
+        # Convert CV2 image to Image
+        pil_image = Image.fromarray(cv2_img_resized)
+
+        # Convert Image to TkPhoto
+        tk_image = ImageTk.PhotoImage(pil_image)
+
+        self.image_label = tk.Label(parent, image=tk_image, borderwidth=0, padx=0, pady=0)
+        self.image_label.image = tk_image  # Keep a reference, prevent garbage-collection
+        self.image_label.pack(fill='both', expand=True)
 
     def setup_map_view(self, parent):
-        # Map view (Bottom Left)
-        # map_widget = tkintermapview.TkinterMapView(self.left_frame, width=800, height=600, corner_radius=0)
-        # map_widget.place(relx=0.5, rely=0.5, anchor=tk.CENTER)
-        self.map_frame = tk.LabelFrame(parent, text="Map View")
-        self.map_frame.pack(expand=True, fill=tk.BOTH)
+        self.map_widget = TkinterMapView(parent, corner_radius=0)
+        self.map_widget.set_tile_server("https://mt0.google.com/vt/lyrs=s&hl=en&x={x}&y={y}&z={z}&s=Ga", max_zoom=22)
+        self.map_widget.set_position(self.centre_pos[0], self.centre_pos[1])
+        self.map_widget.set_zoom(17)
+        self.map_widget.pack(expand=True, fill="both")
 
-        # Placeholder for Map view
-        tk.Label(self.map_frame, text="Map display goes here").pack(expand=True)
+        # self.add_point(PointMessage(lat=self.centre_pos[0], lon=self.centre_pos[1], colour='red', x=0, y=0, width=1, height=1))
 
     def setup_telemetry_view(self, parent):
-        # Yaw-Pitch-Roll Display (Top Right)
-        self.ypr_frame = tk.LabelFrame(parent, text="Yaw-Pitch-Roll")
-        self.ypr_frame.pack(expand=True, fill=tk.BOTH)
-
-        self.yaw_label = tk.Label(self.ypr_frame, text="Yaw: ")
+        self.yaw_label = tk.Label(parent, text="Yaw: ")
         self.yaw_label.pack()
 
-        self.pitch_label = tk.Label(self.ypr_frame, text="Pitch: ")
+        self.pitch_label = tk.Label(parent, text="Pitch: ")
         self.pitch_label.pack()
 
-        self.roll_label = tk.Label(self.ypr_frame, text="Roll: ")
+        self.roll_label = tk.Label(parent, text="Roll: ")
         self.roll_label.pack()
 
     def setup_control_view(self, parent):
-        # Control Panel (Bottom Right)
-        self.control_frame = tk.LabelFrame(parent, text="Controls")
-        self.control_frame.pack(expand=True, fill=tk.BOTH)
 
-        self.arm_button = tk.Button(self.control_frame, text="Arm", command=lambda: print('Arm'))
-        self.arm_button.pack()
+        self.off_nadir_label = tk.Label(parent, text="Off-Nadir Threshold (°)")
+        self.off_nadir_label.pack()
 
-        self.angle_degree_label = tk.Label(self.control_frame, text="Angle Degree")
-        self.angle_degree_label.pack()
+        self.off_nadir_entry = tk.Entry(parent)
+        self.off_nadir_entry.pack()
 
-        self.angle_degree_entry = tk.Entry(self.control_frame)
-        self.angle_degree_entry.pack()
+        self.area_threshold_label = tk.Label(parent, text="Area Threshold (px)")
+        self.area_threshold_label.pack()
+
+        self.area_threshold_entry = tk.Entry(parent)
+        self.area_threshold_entry.pack()
 
         self.pada_frame_var = tk.BooleanVar()
-        self.consider_pada_frame_checkbox = tk.Checkbutton(self.control_frame, text="Consider PADA frame", variable=self.pada_frame_var, command=lambda: print('Consider PADA'))
+        self.consider_pada_frame_checkbox = tk.Checkbutton(parent, text="Consider PADA frame", variable=self.pada_frame_var)
         self.consider_pada_frame_checkbox.pack()
 
-        self.save_button = tk.Button(self.control_frame, text="Save", command=lambda: print('Save'))
+        self.save_button = tk.Button(parent, text="Save", command=self.handle_submit)
         self.save_button.pack()
+
+        self.arm_button = tk.Button(parent, text="Arm", command=self.handle_arm)
+        self.arm_button.pack()
+    
+    def handle_submit(self):
+        off_nadir = self.off_nadir_entry.get()
+        area_threshold = self.area_threshold_entry.get()
+        consider_pada = self.pada_frame_var.get()
+        print(f'Submit: {off_nadir} {area_threshold} {consider_pada}')
+
+    def handle_arm(self):
+        print('Arm')
     
     def update_gui(self):
         if self.check_shutdown():
@@ -97,10 +162,11 @@ class Application:
             while not self.inbound_message_queue.empty():
                 message = self.inbound_message_queue.get_nowait()
                 if isinstance(message, TelemetryMessage):
-                    print(f'GUI received telemetry: {message}')
                     self.yaw_label.config(text=f"Yaw: {message.yaw}")
                     self.pitch_label.config(text=f"Pitch: {message.pitch}")
                     self.roll_label.config(text=f"Roll: {message.roll}")
+                elif isinstance(message, PointMessage):
+                    self.add_point(message)
                 else:
                     print(f'GUI received unknown message: {type(message)}')
         finally:
@@ -118,4 +184,17 @@ class Application:
         """Signal the algorithm to stop and close the GUI."""
         self.shutdown_event.set()
         self.root.destroy()
-        
+
+    def create_circle_image(self, size):
+        circle_image = tk.PhotoImage(width=size, height=size)
+        center_x, center_y = size // 2, size // 2
+        radius = min(center_x, center_y) - 1
+
+        # TODO: make a separate image for each target colour
+
+        # Use the put method to draw a red circle
+        for x in range(size):
+            for y in range(size):
+                if (x - center_x)**2 + (y - center_y)**2 <= radius**2:
+                    circle_image.put("red", (x, y))
+        return circle_image

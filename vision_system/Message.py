@@ -1,5 +1,4 @@
-from dataclasses import dataclass, field
-from enum import Enum, auto
+from dataclasses import dataclass
 
 @dataclass(frozen=True)
 class TelemetryMessage():
@@ -10,3 +9,13 @@ class TelemetryMessage():
 @dataclass(frozen=True)
 class ParamsMessage():
     area_threshold: int
+
+@dataclass(frozen=True)
+class PointMessage():
+    colour: str
+    x: int
+    y: int
+    width: int
+    height: int
+    lat: float
+    lon: float
