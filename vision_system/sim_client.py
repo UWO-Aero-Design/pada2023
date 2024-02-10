@@ -98,6 +98,7 @@ def send_video(stop_flag: Event, video_path: str, stream_url: str) -> None:
         for line in ffmpeg.stderr:
             print("ffmpeg:", line, end='')
 
+    # monitor ffmpeg errors
     Thread(target=monitor_ffmpeg, daemon=True).start()
 
     while not stop_flag.is_set():
