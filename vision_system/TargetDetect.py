@@ -3,7 +3,7 @@ import numpy as np
 from scipy.spatial.transform import Rotation as R
 from geographiclib.geodesic import Geodesic
 from math import cos, sqrt, atan2, degrees
-
+from typing import List, Tuple
 class TargetDetect:
     """Detects targets in a CV2 frame
 
@@ -18,7 +18,26 @@ class TargetDetect:
     def __init__(self):
         # TODO: we'll probably want to accept some parameters here rather than hardcoding things
         #       eg. the colours to use, the minimum allowable area, etc.
-        pass
+        
+        self.colour_ranges = {
+            "red": [
+                [(0,50,50),(10,255,255)],
+                [(345,50,50),(360,255,255)]
+            ],
+            "orange": [
+                [(15,50,50), (45,255,255)]
+            ],
+            "yellow": [
+                [(50,50,50), (75,255,255)]
+            ],
+            "blue": [
+                [(180,50,50), (240, 255,255)],
+            ],
+            "purple": [
+                [(260, 50, 50), (280, 255,255)]
+            ]
+        }
+        
 
     @staticmethod
     def clampZero(x, thresh=0.001):
@@ -38,6 +57,46 @@ class TargetDetect:
             x = 0
         return x
 
+    def detect_color(self, frame: cv2.typing.MatLike, hls: cv2.typing.MatLike, ranges: List[List[Tuple]], color: str):
+        """_summary_
+
+        Args:
+            frame (cv2.typing.MatLike): cv2 frame to process
+            hls (cv2.typing.MatLike): frame converted to hls
+            ranges (List[List[Tuple]]): lower and upper bounds for colors in hls
+        """
+        # create masks for list of upper and lower bounds
+        masks = []
+        for range in ranges:
+            mask = cv2.inRange(hls, range[0], range[1])
+            masks.append(mask)
+
+        # combine masks
+        mask = masks[0]
+        for _mask in masks:
+            mask = np.bitwise_or(mask, _mask) 
+
+        pixels = cv2.bitwise_and(frame, frame, mask=mask)
+        gray = cv2.cvtColor(pixels, cv2.COLOR_BGR2GRAY)
+
+        cnts = cv2.findContours(gray, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        cnts = cnts[0] if len(cnts) == 2 else cnts[1] # if an older verison of findContours()
+
+        centroids = []
+        for c in cnts:
+            x,y,w,h = cv2.boundingRect(c)
+            A = w*h
+
+            # TODO: allow configurable the maximum area threshold
+            # skip centroids with an area below this value (might be a false positive)
+            if(A < self.MINUMUM_AREA_PX):
+                continue
+
+            centre = { 'x': int(x+w/2), 'y': int(y+h/2), 'w': w, 'h': h, 'A': A, "color": color}
+            centroids.append(centre)  
+
+        return centroids
+      
     def detect(self, frame):
         """_summary_
 
@@ -60,44 +119,16 @@ class TargetDetect:
         # blur to remove high frequency noise
         blurred = cv2.GaussianBlur(frame,(3,3),0)
 
-        # convert to hsv to make it easier to mask colours
-        hsv = cv2.cvtColor(blurred, cv2.COLOR_BGR2HLS)
-
-        # TODO: support multiple masks for all targets
-
-        # mask 1
-        lower_lower_red = np.array([0,50,50])
-        lower_upper_red = np.array([10,255,255])
-        # mask 2
-        upper_lower_red = np.array([160,50,50])
-        upper_upper_red = np.array([180,255,255])
-
-        mask1 = cv2.inRange(hsv,lower_lower_red,lower_upper_red)
-        mask2 = cv2.inRange(hsv, upper_lower_red,upper_upper_red)
-
-        mask = np.bitwise_or(mask1,mask2)
-
-        red_pixels = cv2.bitwise_and(frame,frame,mask=mask)
-        gray = cv2.cvtColor(red_pixels, cv2.COLOR_BGR2GRAY)
-
-        cnts = cv2.findContours(gray, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        cnts = cnts[0] if len(cnts) == 2 else cnts[1] # if an older verison of findContours()
+        # convert to hls to make it easier to mask colours
+        hls = cv2.cvtColor(blurred, cv2.COLOR_BGR2HLS)
 
         centroids = []
-        for c in cnts:
-            x,y,w,h = cv2.boundingRect(c)
-            A = w*h
-
-            # TODO: allow configurable the maximum area threshold
-            # skip centroids with an area below this value (might be a false positive)
-            if(A < self.MINUMUM_AREA_PX):
-                continue
-
-            centre = { 'x': int(x+w/2), 'y': int(y+h/2), 'w': w, 'h': h, 'A': A }
-            centroids.append(centre)
+        for colour, color_range in self.colour_ranges.items():
+            _centroids = self.detect_color(blurred, hls, color_range, colour)
+            centroids.extend(_centroids)
 
         # return the centroids along with other info that might be useful for debugging
-        return (centroids, { 'blurred': blurred, 'masked': red_pixels, 'contours': cnts })
+        return centroids
 
     def pixels2camera(self, x: int, y: int, camera_origin):
         """Convert pixel coordinates to camera space

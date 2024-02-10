@@ -58,8 +58,13 @@ def main():
             print("Video stream complete")
             break
 
-        centroids, _ = detect.detect(frame)
-
+        centroids = detect.detect(frame)
+        for c in centroids:
+            start = ( int(c['x']-c['w']/2), int(c['y']-c['h']/2) )
+            end   = ( int(c['x']+c['w']/2), int(c['y']+c['h']/2) )
+            cv2.rectangle(frame, start, end, (36,255,12), 4)
+            cv2.putText(frame, c["color"], start, cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv2.LINE_AA)
+            
         if pos and att:    
             # TODO: wrap this up in a function in the Video class
             cv2.putText(frame, f"{pos.time_boot_ms}", (50, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv2.LINE_AA) 
