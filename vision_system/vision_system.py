@@ -37,7 +37,7 @@ def main():
     messages = [GLOBAL_POSITION_INT, ATTITUDE]
 
     try:
-        tlm = Telemetry(args.MAV, messages, conn_print=True, debug_print=True)
+        # tlm = Telemetry(args.MAV, messages, conn_print=True, debug_print=True)
         video = Video(args.STREAM, debug_print=True)
         detect = TargetDetect()
     except Exception as err:
@@ -48,9 +48,9 @@ def main():
     res = video.get_resolution()
 
     while True:
-        msgs = tlm.get_msgs()
-        pos = msgs[GLOBAL_POSITION_INT]
-        att = msgs[ATTITUDE]
+        # msgs = tlm.get_msgs()
+        # pos = msgs[GLOBAL_POSITION_INT]
+        # att = msgs[ATTITUDE]
 
         frame = video.get_frame()
 
@@ -59,13 +59,18 @@ def main():
             break
 
         centroids = detect.detect(frame)
-
-        if pos and att:    
-            # TODO: wrap this up in a function in the Video class
-            cv2.putText(frame, f"{pos.time_boot_ms}", (50, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv2.LINE_AA) 
-            cv2.putText(frame, f"Lat  : {pos.lat/1E7}", (50, 60), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv2.LINE_AA) 
-            cv2.putText(frame, f"Lon  : {pos.lon/1E7}", (50, 90), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv2.LINE_AA) 
-            cv2.putText(frame, f"Hdg  : {pos.hdg}", (50, 120), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv2.LINE_AA)
+        for c in centroids:
+            start = ( int(c['x']-c['w']/2), int(c['y']-c['h']/2) )
+            end   = ( int(c['x']+c['w']/2), int(c['y']+c['h']/2) )
+            cv2.rectangle(frame, start, end, (36,255,12), 4)
+            cv2.putText(frame, c["color"], start, cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv2.LINE_AA)
+            
+        # if pos and att:    
+        #     # TODO: wrap this up in a function in the Video class
+        #     cv2.putText(frame, f"{pos.time_boot_ms}", (50, 30), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv2.LINE_AA) 
+        #     cv2.putText(frame, f"Lat  : {pos.lat/1E7}", (50, 60), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv2.LINE_AA) 
+        #     cv2.putText(frame, f"Lon  : {pos.lon/1E7}", (50, 90), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv2.LINE_AA) 
+        #     cv2.putText(frame, f"Hdg  : {pos.hdg}", (50, 120), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2, cv2.LINE_AA)
 
         cv2.namedWindow(WINDOW_NAME, cv2.WINDOW_NORMAL)
         cv2.imshow(WINDOW_NAME, frame)

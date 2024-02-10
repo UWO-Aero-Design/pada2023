@@ -6,6 +6,7 @@ import subprocess
 from time import time, sleep
 from threading import Thread, Event
 import json
+from aiohttp import BodyPartReader
 
 import cv2
 from pymavlink import mavutil
@@ -93,6 +94,12 @@ def send_video(stop_flag: Event, video_path: str, stream_url: str) -> None:
     # TODO: grab stderr and optionally print to process stdin
     ffmpeg = subprocess.Popen(ffmpeg_command, stdin=subprocess.PIPE, stderr=subprocess.PIPE)
 
+    def monitor_ffmpeg():
+        for line in ffmpeg.stderr:
+            print("ffmpeg:", line, end='')
+
+    Thread(target=monitor_ffmpeg, daemon=True).start()
+
     while not stop_flag.is_set():
         start = time()
         ret, frame = cap.read()
@@ -100,16 +107,18 @@ def send_video(stop_flag: Event, video_path: str, stream_url: str) -> None:
             print("End of video stream")
             stop_flag.set()
             break
-
-        ffmpeg.stdin.write(frame.tobytes())
-
+        try:
+            ffmpeg.stdin.write(frame.tobytes())
+        except Exception as e:
+            print(f"ffmpeg process is down {e}")
         additional_sleep = frame_delay-(time()-start)
         if(additional_sleep > 0):
             sleep(additional_sleep)
 
+    print("Closing video stream")
     cap.release()
     ffmpeg.stdin.close()
-    ffmpeg.wait()
+    ffmpeg.terminate()
 
 def main():
     args = parse_args()
@@ -132,12 +141,12 @@ def main():
 
     tlm_thread = Thread(target=send_tlm, args=[stop_flag, client, gps, attitude])
     tlm_thread.daemon = True; # makes sure it cleans up on ctrl+c
+    tlm_thread.start()
 
     video_thread = Thread(target=send_video, args=[stop_flag, args.VIDEO, args.STREAM])
     video_thread.daemon = True; # makes sure it cleans up on ctrl+c
-
     video_thread.start()
-    tlm_thread.start()
+
 
     tlm_thread.join()
     video_thread.join()

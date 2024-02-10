@@ -72,7 +72,7 @@ class TargetDetect:
             masks.append(mask)
 
         # combine masks
-        mask = np.zeros(masks[0].shape)
+        mask = masks[0]
         for _mask in masks:
             mask = np.bitwise_or(mask, _mask) 
 
