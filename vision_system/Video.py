@@ -1,4 +1,3 @@
-import queue
 from threading import Thread, Condition
 
 import cv2

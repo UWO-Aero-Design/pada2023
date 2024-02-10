@@ -1,7 +1,7 @@
 import tkinter as tk
 from threading import Event
 from queue import Queue
-from Message import TelemetryMessage, ParamsMessage, PointMessage
+from Message import PositionMessage, AttitudeMessage, PointMessage, VideoMessage
 from tkintermapview import TkinterMapView
 import cv2
 import pathlib
@@ -29,8 +29,7 @@ class Application:
         self.inbound_message_queue = Queue()
         self.shutdown_event = Event()
 
-        g = geocoder.ip('me')
-        pos = g.latlng
+        pos = geocoder.ip('me').latlng
         self.centre_pos = (float(pos[0]), float(pos[1]))
 
         self.DOT_SIZE = 6
@@ -76,30 +75,7 @@ class Application:
         self.update_gui()
 
     def setup_camera_view(self, parent):
-        path = (pathlib.Path() / 'data/sample_image.jpg').resolve()
-        cv2_img = cv2.imread(str(path))
-
-        # Calculate the desired size based on the parent's width and the image's aspect ratio
-        parent.update_idletasks()  # Make sure parent's width is up to date
-        desired_width = int(parent.winfo_width() / 2)
-        (original_height, original_width) = cv2_img.shape[:2]
-        aspect_ratio = original_height / original_width
-        desired_height = int(desired_width * aspect_ratio)
-
-        # Resize image to fit the width of the cell and maintain aspect ratio
-        cv2_img_resized = cv2.resize(cv2_img, (desired_width, desired_height))
-
-        # rearrange color channels
-        cv2_img_resized = cv2.cvtColor(cv2_img_resized, cv2.COLOR_BGR2RGB)
-
-        # Convert CV2 image to Image
-        pil_image = Image.fromarray(cv2_img_resized)
-
-        # Convert Image to TkPhoto
-        tk_image = ImageTk.PhotoImage(pil_image)
-
-        self.image_label = tk.Label(parent, image=tk_image, borderwidth=0, padx=0, pady=0)
-        self.image_label.image = tk_image  # Keep a reference, prevent garbage-collection
+        self.image_label = tk.Label(parent, borderwidth=0, padx=0, pady=0)
         self.image_label.pack(fill='both', expand=True)
 
     def setup_map_view(self, parent):
@@ -108,8 +84,6 @@ class Application:
         self.map_widget.set_position(self.centre_pos[0], self.centre_pos[1])
         self.map_widget.set_zoom(17)
         self.map_widget.pack(expand=True, fill="both")
-
-        # self.add_point(PointMessage(lat=self.centre_pos[0], lon=self.centre_pos[1], colour='red', x=0, y=0, width=1, height=1))
 
     def setup_telemetry_view(self, parent):
         self.yaw_label = tk.Label(parent, text="Yaw: ")
@@ -120,6 +94,15 @@ class Application:
 
         self.roll_label = tk.Label(parent, text="Roll: ")
         self.roll_label.pack()
+
+        self.lat_label = tk.Label(parent, text="Lat: ")
+        self.lat_label.pack()
+
+        self.lon_label = tk.Label(parent, text="Lon: ")
+        self.lon_label.pack()
+
+        self.hdg_label = tk.Label(parent, text="Hdg: ")
+        self.hdg_label.pack()
 
     def setup_control_view(self, parent):
 
@@ -161,10 +144,18 @@ class Application:
         try:
             while not self.inbound_message_queue.empty():
                 message = self.inbound_message_queue.get_nowait()
-                if isinstance(message, TelemetryMessage):
+                if isinstance(message, AttitudeMessage):
                     self.yaw_label.config(text=f"Yaw: {message.yaw}")
                     self.pitch_label.config(text=f"Pitch: {message.pitch}")
                     self.roll_label.config(text=f"Roll: {message.roll}")
+                elif isinstance(message, PositionMessage):
+                    self.lat_label.config(text=f"Lat: {message.lat}")
+                    self.lon_label.config(text=f"Lon: {message.lon}")
+                    self.hdg_label.config(text=f"Hdg: {message.hdg}")
+                elif isinstance(message, VideoMessage):
+                    img = self.cv2totk(message.img)
+                    self.image_label.config(image=img, borderwidth=0, padx=0, pady=0)
+                    self.image_label.image = img  # Keep a reference, prevent garbage-collection
                 elif isinstance(message, PointMessage):
                     self.add_point(message)
                 else:
@@ -185,6 +176,31 @@ class Application:
         self.shutdown_event.set()
         self.root.destroy()
 
+    def set_centre(self, lat, lon):
+        print(lat, lon, self.centre_pos[0], self.centre_pos[1])
+        self.centre_pos = (lat, lon)
+        self.map_widget.set_position(self.centre_pos[0], self.centre_pos[1])
+    
+    def cv2totk(self, cv2_img):
+        # Calculate the desired size based on the parent's width and the image's aspect ratio
+        self.camera_frame.update_idletasks()  # Make sure parent's width is up to date
+        desired_width = int(self.camera_frame.winfo_width() / 2)
+        (original_height, original_width) = cv2_img.shape[:2]
+        aspect_ratio = original_height / original_width
+        desired_height = int(desired_width * aspect_ratio)
+
+        # Resize image to fit the width of the cell and maintain aspect ratio
+        cv2_img_resized = cv2.resize(cv2_img, (desired_width, desired_height))
+
+        # rearrange color channels
+        cv2_img_resized = cv2.cvtColor(cv2_img_resized, cv2.COLOR_BGR2RGB)
+
+        # Convert CV2 image to Image
+        pil_image = Image.fromarray(cv2_img_resized)
+
+        # Convert Image to TkPhoto
+        return ImageTk.PhotoImage(pil_image)
+    
     def create_circle_image(self, size):
         circle_image = tk.PhotoImage(width=size, height=size)
         center_x, center_y = size // 2, size // 2
